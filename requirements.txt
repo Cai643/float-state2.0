@@ -1,0 +1,10 @@
+PySide6
+pynput
+pywin32
+psutil
+Pillow
+ollama
+flask
+flask-cors
+requests
+pandas

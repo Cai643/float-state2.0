@@ -1,0 +1,2412 @@
+<!DOCTYPE html>
+<html lang='zh-CN'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>Flow State Assistant</title>
+    <style>
+        :root {
+            --color-bg-light: #fff5cf;
+            --color-green-light: #a4bf5a;
+            --color-green-dark: #4f6610;
+            --color-green-mid: #789035;
+            --color-accent-gold: #c9b365;
+            --color-text-main: #4f6610;
+            --color-text-sub: #789035;
+            --color-white: #ffffff;
+            --color-hover: #f0f7e6;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background-color: var(--color-bg-light);
+            color: var(--color-text-main);
+            overflow: hidden;
+        }
+
+        /* --- Report Content Typography --- */
+        #report-markdown-content {
+            font-size: 14px;
+            line-height: 1.8;
+            color: var(--color-text-main);
+        }
+        #report-markdown-content h1 {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--color-green-dark);
+            margin: 8px 0 12px;
+        }
+        #report-markdown-content h2 {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--color-green-dark);
+            margin: 14px 0 10px;
+        }
+        #report-markdown-content h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--color-text-main);
+            margin: 10px 0 8px;
+        }
+        #report-markdown-content strong {
+            color: var(--color-green-mid);
+        }
+        #report-markdown-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            background: rgba(255,255,255,0.7);
+            border: 1px solid rgba(164, 191, 90, 0.2);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .report-card {
+            background: var(--color-white);
+            border: 1px solid rgba(164, 191, 90, 0.25);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(79,102,16,0.06);
+            margin-top: 8px;
+        }
+        .report-body {
+            padding: 16px 20px;
+        }
+        .peak-banner {
+            background: rgba(255, 245, 207, 0.7);
+            padding: 10px 12px;
+            border-left: 4px solid var(--color-accent-gold);
+            border-radius: 8px;
+            font-size: 13px;
+            color: var(--color-green-dark);
+            margin: 10px 0 16px;
+        }
+        #report-markdown-content thead th {
+            font-weight: 700;
+            color: var(--color-green-dark);
+            background: rgba(164, 191, 90, 0.12);
+        }
+        #report-markdown-content tbody td {
+            font-size: 14px;
+            color: var(--color-text-main);
+        }
+        #report-markdown-content tbody tr:nth-child(even) td {
+            background: rgba(255,255,255,0.4);
+        }
+
+        #app {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+            position: relative;
+        }
+
+        /* --- Sidebar --- */
+        .sidebar {
+            flex: 0 0 60px;
+            height: 100%;
+            background-color: var(--color-white);
+            border-right: 1px solid rgba(164, 191, 90, 0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 20px;
+            z-index: 20;
+        }
+        .sidebar-icon {
+            width: 40px;
+            height: 40px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--color-green-mid);
+            position: relative;
+        }
+        .sidebar-icon:hover, .sidebar-icon.active {
+            background-color: var(--color-bg-light);
+            color: var(--color-green-dark);
+        }
+        .sidebar-icon svg {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+        }
+
+        /* --- Left Panel --- */
+        .left-panel {
+            flex: 0 0 auto;
+            width: 50%;
+            height: 100%;
+            background-color: var(--color-bg-light);
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--color-green-light);
+            position: relative;
+            overflow: hidden;
+            min-width: 300px;
+            max-width: 80vw;
+        }
+
+        /* --- Panel Views --- */
+        .panel-view {
+            display: none;
+            flex-direction: column;
+            flex: 1;
+            overflow: hidden;
+            min-height: 0;
+        }
+        .panel-view.active {
+            display: flex;
+        }
+
+        /* Nav Tabs (History View) */
+        .nav-tabs {
+            display: flex;
+            padding: 15px 20px 0 20px;
+            gap: 10px;
+            background-color: var(--color-bg-light);
+        }
+        .nav-btn {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+            border: 1px solid var(--color-green-light);
+            background-color: transparent;
+            color: var(--color-green-mid);
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .nav-btn:hover {
+            background-color: var(--color-hover);
+        }
+        .nav-btn.active {
+            background-color: var(--color-green-dark);
+            color: var(--color-white);
+            border-color: var(--color-green-dark);
+        }
+
+        /* History List */
+        .history-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        .history-header {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--color-green-dark);
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(164, 191, 90, 0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .history-item {
+            background-color: var(--color-white);
+            border-radius: 12px;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(79, 102, 16, 0.05);
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+        .history-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(79, 102, 16, 0.1);
+            border-color: var(--color-green-light);
+        }
+        .item-icon {
+            width: 40px;
+            height: 40px;
+            background-color: var(--color-bg-light);
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-right: 15px;
+            color: var(--color-green-mid);
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .item-content {
+            flex: 1;
+            overflow: hidden;
+        }
+        .item-title {
+            font-weight: bold;
+            color: var(--color-green-dark);
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .item-subtitle {
+            font-size: 12px;
+            color: var(--color-text-sub);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .item-time {
+            background-color: rgba(164, 191, 90, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        /* --- AI Search View --- */
+        .ai-search-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 30px;
+            background-color: var(--color-bg-light);
+            /* New: Centering Content */
+            justify-content: center; 
+            max-width: 800px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .ai-search-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .ai-search-title {
+            font-size: 32px; /* Larger Title */
+            font-weight: bold;
+            color: var(--color-green-dark);
+            margin-bottom: 12px;
+            letter-spacing: -0.5px;
+        }
+        .ai-search-subtitle {
+            font-size: 16px;
+            color: var(--color-text-sub);
+            opacity: 0.8;
+        }
+        .ai-input-box {
+            background-color: var(--color-white);
+            border-radius: 24px; /* More rounded */
+            box-shadow: 0 10px 30px rgba(79, 102, 16, 0.08); /* Softer shadow */
+            padding: 18px 24px;
+            display: flex;
+            align-items: center;
+            border: 2px solid transparent;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        .ai-input-box:focus-within {
+            border-color: var(--color-green-light);
+            box-shadow: 0 15px 40px rgba(79, 102, 16, 0.15);
+            transform: translateY(-2px);
+        }
+        .ai-input {
+            flex: 1;
+            border: none;
+            outline: none;
+            font-size: 18px; /* Larger Text */
+            color: var(--color-green-dark);
+            margin-left: 15px;
+            background: transparent;
+        }
+        .ai-input::placeholder {
+            color: rgba(120, 144, 53, 0.4);
+        }
+        
+        /* New: Search Suggestions as Cards */
+        .suggestion-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 15px;
+            margin-top: 40px;
+            width: 100%;
+        }
+        .suggestion-card {
+            background: rgba(255, 255, 255, 0.6);
+            border: 1px solid rgba(164, 191, 90, 0.2);
+            border-radius: 12px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+        .suggestion-card:hover {
+            background: var(--color-white);
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            border-color: var(--color-green-light);
+        }
+        .suggestion-icon {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        .suggestion-text {
+            font-size: 14px;
+            color: var(--color-green-mid);
+            font-weight: 500;
+        }
+
+        .filter-tags {
+            display: none; /* Hide old tags for cleaner look */
+        }
+        
+        .search-results-area {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 100%;
+            margin-top: 30px;
+            /* Hide scrollbar but keep functionality */
+            scrollbar-width: none; 
+        }
+        .search-results-area::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* --- AI Result Card Styling --- */
+        .ai-summary-card {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 24px;
+            border: none;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+            display: none;
+            position: relative;
+            overflow: hidden;
+        }
+        .ai-summary-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(to bottom, var(--color-green-light), var(--color-green-dark));
+        }
+        .ai-summary-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: var(--color-green-dark);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+        .ai-summary-content {
+            font-size: 15px;
+            line-height: 1.7;
+            color: #333;
+        }
+        .result-group-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: var(--color-green-mid);
+            margin-bottom: 10px;
+            padding-left: 5px;
+        }
+
+        /* --- Advanced AI Search Styles --- */
+        .citation-ref {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            width: 16px;
+            height: 16px;
+            background-color: var(--color-green-light);
+            color: var(--color-white);
+            border-radius: 50%;
+            font-size: 10px;
+            margin: 0 2px;
+            vertical-align: text-top;
+            cursor: pointer;
+        }
+        .citation-ref:hover {
+            background-color: var(--color-green-dark);
+        }
+
+        .follow-up-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+            border-top: 1px solid rgba(164, 191, 90, 0.1);
+            padding-top: 15px;
+        }
+        .follow-up-chip {
+            padding: 8px 16px;
+            background-color: var(--color-white);
+            border: 1px solid var(--color-green-light);
+            border-radius: 20px;
+            font-size: 13px;
+            color: var(--color-green-dark);
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .follow-up-chip:hover {
+            background-color: var(--color-bg-light);
+            transform: translateY(-1px);
+        }
+        
+        .recent-searches {
+            margin-top: 20px;
+        }
+        .recent-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 15px;
+            cursor: pointer;
+            border-radius: 8px;
+            color: var(--color-text-main);
+            transition: background 0.2s;
+        }
+        .recent-item:hover {
+            background-color: rgba(255,255,255,0.5);
+        }
+        .recent-icon {
+            color: var(--color-green-mid);
+        }
+
+        .typing-cursor::after {
+            content: '▋';
+            display: inline-block;
+            vertical-align: baseline;
+            animation: blink 1s step-end infinite;
+            color: var(--color-green-dark);
+            font-size: 14px;
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        /* --- Settings Modal --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.3);
+            z-index: 1000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .settings-modal {
+            background-color: var(--color-white);
+            width: 400px;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes popIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .settings-header {
+            font-size: 20px;
+            font-weight: bold;
+            color: var(--color-green-dark);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .close-btn {
+            cursor: pointer;
+            padding: 5px;
+            color: var(--color-text-sub);
+        }
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+        .setting-label {
+            color: var(--color-text-main);
+        }
+        
+        .settings-section-title {
+            font-size: 12px;
+            font-weight: bold;
+            color: var(--color-green-mid);
+            margin-top: 20px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .settings-select {
+            padding: 6px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(164, 191, 90, 0.3);
+            background-color: var(--color-bg-light);
+            color: var(--color-green-dark);
+            outline: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .color-options {
+            display: flex;
+            gap: 12px;
+        }
+        .color-circle {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid var(--color-white);
+            box-shadow: 0 0 0 1px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+        }
+        .color-circle:hover {
+            transform: scale(1.1);
+        }
+        .color-circle.active {
+            transform: scale(1.1);
+            box-shadow: 0 0 0 2px var(--color-green-dark);
+        }
+
+        /* Toggle Switch */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 20px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider { background-color: var(--color-green-mid); }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        /* --- Resizer --- */
+        .resizer {
+            flex: 0 0 10px;
+            background-color: transparent;
+            cursor: col-resize;
+            position: relative;
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0 -5px;
+        }
+        .resizer::before {
+            content: '';
+            width: 1px;
+            height: 100%;
+            background-color: var(--color-green-light);
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .resizer-handle {
+            width: 24px;
+            height: 24px;
+            background-color: var(--color-white);
+            border: 1px solid var(--color-green-light);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            z-index: 11;
+            position: relative;
+        }
+        .resizer-handle svg {
+            width: 12px;
+            height: 12px;
+            fill: var(--color-green-mid);
+        }
+
+        /* --- Right Panel --- */
+        .right-panel {
+            flex: 1;
+            height: 100%;
+            background-color: var(--color-white);
+            display: flex;
+            flex-direction: row; 
+            position: relative;
+            min-width: 300px;
+        }
+
+        /* --- Chat Area --- */
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--color-white);
+            min-width: 300px;
+        }
+
+        .chat-header {
+            height: 50px;
+            border-bottom: 1px solid rgba(164, 191, 90, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            background-color: var(--color-bg-light);
+        }
+
+        .chat-title {
+            font-weight: 600;
+            color: var(--color-text-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .message {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.5;
+            word-wrap: break-word;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            background-color: var(--color-green-dark);
+            color: var(--color-white);
+            border-bottom-right-radius: 2px;
+        }
+
+        .message.ai {
+            align-self: flex-start;
+            background-color: var(--color-bg-light);
+            color: var(--color-text-main);
+            border-bottom-left-radius: 2px;
+            border: 1px solid rgba(164, 191, 90, 0.3);
+        }
+
+        .input-area {
+            padding: 20px;
+            border-top: 1px solid rgba(164, 191, 90, 0.3);
+            display: flex;
+            gap: 10px;
+            background-color: var(--color-bg-light); /* 背景改为米黄色 */
+        }
+
+        .input-wrapper {
+            flex: 1;
+            position: relative;
+        }
+
+        .input-box {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #789035;
+            border-radius: 24px;
+            outline: none;
+            font-size: 16px; /* 字体加大 */
+            transition: border-color 0.2s;
+            background-color: var(--color-white);
+            box-sizing: border-box;
+            color: var(--color-text-main);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center; /* 文本居中 */
+        }
+        
+        .report-input-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: var(--color-green-dark);
+            font-weight: bold;
+        }
+        
+        .days-input {
+            width: 40px;
+            border: none;
+            /* border-bottom: 2px solid var(--color-green-mid);  Removed underline */
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--color-green-dark);
+            margin: 0 5px;
+            outline: none;
+            background: transparent;
+            padding-top: 2px; /* Slight offset down */
+        }
+        
+        .days-input:focus {
+            /* border-bottom-color: var(--color-green-dark); Removed focus underline */
+        }
+
+        .send-btn {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background-color: var(--color-green-mid);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.1s, background-color 0.2s;
+            flex-shrink: 0;
+        }
+
+        .send-btn:hover {
+            background-color: var(--color-green-dark);
+            transform: scale(1.05);
+        }
+
+        .send-btn:active {
+            transform: scale(0.95);
+        }
+
+        .send-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: white;
+            margin-left: 2px;
+        }
+
+        /* --- Stats Dashboard Cards (Theme-aware) --- */
+        .stats-card-focus {
+            background: linear-gradient(135deg, var(--color-green-light), var(--color-green-mid));
+            padding: 15px;
+            border-radius: 12px;
+            color: var(--color-white);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+            flex: 1;
+        }
+        .stats-card-ent {
+            background: var(--color-white);
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid var(--color-green-light);
+            color: var(--color-text-main);
+            flex: 1;
+        }
+
+        /* --- Right Sidebar (Collapsed) --- */
+        .right-sidebar {
+            width: 0;
+            background-color: #fafafa;
+            border-left: 1px solid rgba(164, 191, 90, 0.3);
+            overflow: hidden;
+            transition: width 0.3s ease;
+        }
+
+        .right-sidebar.open {
+            width: 250px;
+        }
+
+        .resizer-right {
+            width: 5px;
+            cursor: col-resize;
+            background: transparent;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+
+        .resizer-right:hover {
+            background: rgba(0,0,0,0.05);
+        }
+        body.resizing {
+            cursor: col-resize;
+            user-select: none;
+        }
+
+        /* --- Compact Mode --- */
+        body.compact .sidebar-icon {
+            margin-bottom: 10px;
+            width: 36px;
+            height: 36px;
+        }
+        body.compact .nav-tabs {
+            padding-top: 10px;
+        }
+        body.compact .nav-btn {
+            padding: 4px 12px;
+            font-size: 13px;
+        }
+        body.compact .history-item {
+            padding: 10px;
+            gap: 10px;
+        }
+        body.compact .item-icon {
+            width: 32px;
+            height: 32px;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+        body.compact .ai-search-container {
+            padding: 15px;
+        }
+        body.compact .ai-search-header {
+            margin-bottom: 15px;
+        }
+        body.compact .chat-messages {
+            padding: 15px 15px 60px 15px;
+        }
+        body.compact .message {
+            padding: 10px 15px;
+        }
+        /* Toast Notification */
+        .toast-container {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+        }
+        .toast {
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .toast.success { background-color: var(--color-green-dark); }
+        .toast.error { background-color: #d32f2f; }
+    </style>
+</head>
+<body>
+    <div id='app'>
+        
+        <!-- Sidebar -->
+        <div class='sidebar'>
+            <div class='sidebar-icon active' id='sidebar-history' title='History' onclick='showPanel("history")'>
+                <svg viewBox='0 0 24 24'><path d='M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z'/></svg>
+            </div>
+            <div class='sidebar-icon' id='sidebar-search' title='AI Search' onclick='showPanel("search")'>
+                <svg viewBox='0 0 24 24'><path d='M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z'/></svg>
+            </div>
+            <div class='sidebar-icon' id='sidebar-settings' title='Settings' onclick='toggleSettings()'>
+                <svg viewBox='0 0 24 24'><path d='M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.04.17 0 .36.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.58 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.04-.22 0-.45-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z'/></svg>
+            </div>
+        </div>
+
+        <!-- Left Panel Wrapper -->
+        <div class='left-panel' id='left-panel'>
+            
+            <!-- Persistent Navigation Tabs -->
+            <div class="nav-tabs">
+                <div class="nav-btn active" id="btn-all" onclick="switchTab('all')" data-i18n="nav.all">全部</div>
+                <div class="nav-btn" id="btn-custom" onclick="switchTab('custom')" data-i18n="nav.custom">自定义</div>
+                <div class="nav-btn" id="btn-search" onclick="switchTab('search')" data-i18n="nav.search">AI 搜索</div>
+            </div>
+
+            <!-- Dashboard Stats (New) -->
+                <div id="stats-dashboard" style="padding: 15px 20px 0 20px; display: flex; gap: 15px;">
+                <div class="stats-card-focus">
+                    <div style="font-size: 12px; opacity: 0.9; margin-bottom: 5px;">今日专注时长</div>
+                    <div style="font-size: 24px; font-weight: bold;" id="today-focus-time">--:--</div>
+                    <div style="font-size: 12px; margin-top: 5px; opacity: 0.8;">高效产出</div>
+                </div>
+                <div class="stats-card-ent">
+                    <div style="font-size: 12px; color: #789035; margin-bottom: 5px;">今日娱乐/休息</div>
+                    <div style="font-size: 24px; font-weight: bold;" id="today-ent-time">--:--</div>
+                    <div style="font-size: 12px; margin-top: 5px; color: var(--color-green-light);">适当放松</div>
+                </div>
+            </div>
+
+            <!-- View 1: History List -->
+            <div id="panel-history" class="panel-view active">
+                <div class="history-container">
+                    <div class="history-header">
+                        <span id="history-title" data-i18n="history.title.all">全部浏览记录</span>
+                        <span style="font-size: 12px; font-weight: normal; color: #789035;" data-i18n="history.source">数据来源: 本地监控</span>
+                    </div>
+                    <div class="history-list" id="history-list">
+                        <!-- JS Dynamic -->
+                        <div style="text-align: center; color: #789035; margin-top: 50px;">正在加载数据...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- View 1.5: Custom Fragments -->
+            <div id="panel-custom" class="panel-view">
+                <div class="history-container">
+                    <div class="history-header">
+                        <span data-i18n="custom.title">自定义片段</span>
+                        <button onclick="openAddFragmentModal()" style="padding: 6px 12px; background: var(--color-green-mid); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">+ 添加片段</button>
+                    </div>
+                    <div class="history-list" id="custom-list">
+                        <!-- JS Dynamic -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- View 2: AI Search Interface -->
+            <div id="panel-search" class="panel-view">
+                <div class='ai-search-container'>
+                    <div class='ai-search-header'>
+                        <div class='ai-search-title' data-i18n="search.title">AI 智能搜索</div>
+                        <div class='ai-search-subtitle' data-i18n="search.subtitle">探索你的数字足迹与记忆</div>
+                    </div>
+                    
+                    <div class='ai-input-box'>
+                        <svg viewBox='0 0 24 24' width='24' height='24' fill='var(--color-green-light)'><path d='M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z'/></svg>
+                        <input type='text' class='ai-input' id='ai-search-input' data-i18n-placeholder="search.placeholder" placeholder='搜索关键词、应用或主题...' onkeypress='handleAiSearch(event)'>
+                    </div>
+
+                    <div class='filter-tags'>
+                        <!-- Hidden but preserved logic -->
+                        <div class='filter-tag active' data-i18n="search.filter.all">全部</div>
+                        <div class='filter-tag' data-i18n="search.filter.doc">文档</div>
+                        <div class='filter-tag' data-i18n="search.filter.web">网页</div>
+                        <div class='filter-tag' data-i18n="search.filter.chat">聊天</div>
+                    </div>
+
+                    <div class='search-results-area' id='ai-results-area'>
+ 
+                        <!-- New: Suggestion Grid (Empty State) -->
+                        <div class="suggestion-grid">
+                            <div class="suggestion-card" onclick="setSearch('我的工作效率')">
+                                <div class="suggestion-icon">??</div>
+                                <div class="suggestion-text">分析我的工作效率</div>
+                            </div>
+                            <div class="suggestion-card" onclick="setSearch('上周的项目进度')">
+                                <div class="suggestion-icon">?</div>
+                                <div class="suggestion-text">上周项目进度如何？</div>
+                            </div>
+                            <div class="suggestion-card" onclick="setSearch('Chrome 浏览历史')">
+                                <div class="suggestion-icon">?</div>
+                                <div class="suggestion-text">搜索网页浏览记录</div>
+                            </div>
+                            <div class="suggestion-card" onclick="setSearch('最近打开的文档')">
+                                <div class="suggestion-icon">?</div>
+                                <div class="suggestion-text">找回最近的文档</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Resizer -->
+        <div class='resizer' id='resizer'>
+            <div class='resizer-handle'>
+                <svg viewBox='0 0 24 24'><path d='M8 19c0 1.1.9 2 2 2h4c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v14zm6-14h2v14h-2V5zM8 5h2v14H8V5z'/></svg>
+            </div>
+        </div>
+
+        <!-- Right Panel: AI Chat -->
+        <div class='right-panel' id='right-panel'>
+            <div class='chat-container'>
+                <div class='chat-header'>
+                    <div class='chat-title' data-i18n="chat.title">Flow-State Chat</div>
+                    <div style='color: var(--color-green-mid); cursor: pointer;' onclick="toggleRightSidebar()">
+                        <svg viewBox='0 0 24 24' width='20' height='20' fill='currentColor'><path d='M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z'/></svg>
+                    </div>
+                </div>
+                
+                <div class='chat-messages' id='chat-messages'>
+                    <div class='message ai' data-i18n="chat.welcome">你好！我是你的 Flow-State 助手。这里可以查看你的历史行为数据，也可以和我聊天。</div>
+                </div>
+                
+                <div class='input-area'>
+                    <div class='input-wrapper'>
+                        <!-- 自定义报告生成输入框 -->
+                        <div class='input-box' id='report-input-wrapper'>
+                            <div class="report-input-container">
+                                生成近 <input type="number" id="days-input" class="days-input" value="3" min="1" max="365"> 天的报告
+                            </div>
+                        </div>
+                    </div>
+                    <div class='send-btn' id='send-btn' onclick="triggerReportGeneration()">
+                        <svg viewBox='0 0 24 24'><path d='M2.01 21L23 12 2.01 3 2 10l15 2-15 2z'/></svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Resizer -->
+            <div class='resizer-right' id='resizer-right'>
+                <div class='resizer-handle'>
+                    <svg viewBox='0 0 24 24'><path d='M8 19c0 1.1.9 2 2 2h4c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v14zm6-14h2v14h-2V5zM8 5h2v14H8V5z'/></svg>
+                </div>
+            </div>
+            
+            <!-- Right Sidebar -->
+            <div class='right-sidebar' id='right-sidebar'>
+                <div style="padding: 20px; color: var(--color-green-mid); font-size: 14px; text-align: center;">
+                    <div style="margin-bottom: 10px; font-weight: bold;">扩展信息</div>
+                    <div style="font-size: 12px; opacity: 0.8;">这里可以放置更多工具或上下文信息。</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Settings Modal -->
+    <div class='modal-overlay' id='settings-modal'>
+        <div class='settings-modal'>
+            <div class='settings-header'>
+                <span data-i18n="settings.title">设置</span>
+                <span class='close-btn' onclick='toggleSettings()'>&times;</span>
+            </div>
+            
+            <!-- General -->
+            <div class='settings-section-title' data-i18n="settings.general">常规</div>
+            <div class='setting-item'>
+                <div class='setting-label' data-i18n="settings.autostart">开机自动启动</div>
+                <label class='switch'>
+                    <input type='checkbox' id="autostart-toggle" onchange="toggleAutostart(this.checked)">
+                    <span class='slider'></span>
+                </label>
+            </div>
+            <div class='setting-item'>
+                <div class='setting-label' data-i18n="settings.language">语言</div>
+                <select class="settings-select" id="language-select" onchange="changeLanguage(this.value)">
+                    <option value="zh">中文</option>
+                    <option value="en">English</option>
+                </select>
+            </div>
+
+            <!-- Appearance -->
+            <div class='settings-section-title' data-i18n="settings.appearance">外观</div>
+            <div class='setting-item'>
+                <div class='setting-label' data-i18n="settings.theme">主题色</div>
+                <div class="color-options">
+                    <div class="color-circle active" style="background: #a4bf5a;" onclick="setTheme('green', this)"></div>
+                    <div class="color-circle" style="background: #6495ED;" onclick="setTheme('blue', this)"></div>
+                    <div class="color-circle" style="background: #FF7F50;" onclick="setTheme('orange', this)"></div>
+                    <div class="color-circle" style="background: #9370DB;" onclick="setTheme('purple', this)"></div>
+                </div>
+            </div>
+            <div class='setting-item'>
+                <div class='setting-label' data-i18n="settings.compact">紧凑模式</div>
+                <label class='switch'>
+                    <input type='checkbox' id="compact-toggle" onchange="toggleCompactMode(this.checked)">
+                    <span class='slider'></span>
+                </label>
+            </div>
+
+            <!-- Data -->
+            <div class='settings-section-title' data-i18n="settings.data">数据</div>
+            <div class='setting-item'>
+                <div class='setting-label' data-i18n="settings.auto_record">自动记录浏览数据</div>
+                <label class='switch'>
+                    <input type='checkbox' checked>
+                    <span class='slider'></span>
+                </label>
+            </div>
+            
+            <div class='setting-item'>
+                <div class='setting-label' data-i18n="settings.notifications">通知提醒</div>
+                <label class='switch'>
+                    <input type='checkbox' checked>
+                    <span class='slider'></span>
+                </label>
+            </div>
+
+            <div style='margin-top: 20px; text-align: right;'>
+                <button onclick='toggleSettings()' style='padding: 8px 20px; background: var(--color-green-dark); color: white; border: none; border-radius: 6px; cursor: pointer;' data-i18n="settings.save">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fragment Modal -->
+    <div class='modal-overlay' id='fragment-modal'>
+        <div class='settings-modal'>
+            <div class='settings-header'>
+                <span>添加片段</span>
+                <span class='close-btn' onclick='closeFragmentModal()'>&times;</span>
+            </div>
+            
+            <div class="setting-item" style="flex-direction: column; align-items: flex-start;">
+                <div class="setting-label" style="margin-bottom: 8px;">开始时间</div>
+                <div style="display: flex; gap: 8px; width: 100%;">
+                    <input type="date" id="start-date" class="settings-select" style="flex: 2;">
+                    <select id="start-hour" class="settings-select" style="flex: 1; min-width: 60px;"></select>
+                    <span style="align-self: center;">:</span>
+                    <select id="start-minute" class="settings-select" style="flex: 1; min-width: 60px;"></select>
+                </div>
+            </div>
+
+            <div class="setting-item" style="flex-direction: column; align-items: flex-start;">
+                <div class="setting-label" style="margin-bottom: 8px;">结束时间</div>
+                <div style="display: flex; gap: 8px; width: 100%;">
+                    <input type="date" id="end-date" class="settings-select" style="flex: 2;">
+                    <select id="end-hour" class="settings-select" style="flex: 1; min-width: 60px;"></select>
+                    <span style="align-self: center;">:</span>
+                    <select id="end-minute" class="settings-select" style="flex: 1; min-width: 60px;"></select>
+                </div>
+            </div>
+
+            <div class="setting-item">
+                <div class="setting-label">描述</div>
+                <input type="text" id="frag-summary" class="settings-select" placeholder="例如: 阅读书籍">
+            </div>
+            <div class="setting-item">
+                <div class="setting-label">类型</div>
+                <select id="frag-status" class="settings-select">
+                    <option value="focus">专注 (Focus)</option>
+                    <option value="entertainment">娱乐 (Entertainment)</option>
+                </select>
+            </div>
+            <div style='margin-top: 20px; text-align: right;'>
+                <button onclick='saveFragment()' style='padding: 8px 20px; background: var(--color-green-dark); color: white; border: none; border-radius: 6px; cursor: pointer;'>保存</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Settings Logic (Hoisted) ---
+        const i18n = {
+            zh: {
+                "settings.title": "设置",
+                "settings.general": "常规",
+                "settings.autostart": "开机自动启动",
+                "settings.language": "语言",
+                "settings.appearance": "外观",
+                "settings.theme": "主题色",
+                "settings.compact": "紧凑模式",
+                "settings.data": "数据",
+                "settings.auto_record": "自动记录浏览数据",
+                "settings.notifications": "通知提醒",
+                "settings.save": "保存",
+                "nav.7days": "最近7天",
+                "nav.30days": "最近30天",
+                "nav.all": "全部",
+                "nav.custom": "自定义",
+                "nav.search": "AI 搜索",
+                "history.title.7": "最近7天浏览记录",
+                "history.title.30": "最近30天浏览记录",
+                "history.title.all": "全部浏览记录",
+                "custom.title": "自定义片段管理",
+                "history.source": "数据来源: 本地监控",
+                "search.title": "AI 智能搜索",
+                "search.subtitle": "探索你的数字足迹与记忆",
+                "search.placeholder": "搜索关键词、应用或主题...",
+                "search.filter.all": "全部",
+                "search.filter.doc": "文档",
+                "search.filter.web": "网页",
+                "search.filter.chat": "聊天",
+                "search.recent": "最近搜索",
+                "chat.title": "Flow-State Chat",
+                "chat.placeholder": "询问 Flow-State 助手...",
+                "chat.welcome": "你好！我是你的 Flow-State 助手。这里可以查看你的历史行为数据，也可以和我聊天。",
+                "msg.loading": "正在加载数据...",
+                "msg.no_records": "暂无记录",
+                "msg.failed": "加载失败",
+                "msg.ai_thinking": "AI 正在思考",
+                "msg.ai_analyzing": "正在分析历史记录...",
+                "msg.no_results": "未找到与 \"{query}\" 相关的记录。",
+                "msg.ai_answer": "AI 智能回答",
+                "msg.sources": "来源记录",
+                "msg.relevant": "相关记录"
+            },
+            en: {
+                "settings.title": "Settings",
+                "settings.general": "General",
+                "settings.autostart": "Auto Start at Boot",
+                "settings.language": "Language",
+                "settings.appearance": "Appearance",
+                "settings.theme": "Theme Color",
+                "settings.compact": "Compact Mode",
+                "settings.data": "Data",
+                "settings.auto_record": "Auto Record",
+                "settings.notifications": "Notifications",
+                "settings.save": "Save",
+                "nav.7days": "Recent 7 Days",
+                "nav.30days": "Recent 30 Days",
+                "nav.search": "AI Search",
+                "history.title.7": "Browsing History (7 Days)",
+                "history.title.30": "Browsing History (30 Days)",
+                "history.source": "Source: Local Monitor",
+                "search.title": "AI Smart Search",
+                "search.subtitle": "Explore your digital footprint & memories",
+                "search.placeholder": "Search keywords, apps, or topics...",
+                "search.filter.all": "All",
+                "search.filter.doc": "Docs",
+                "search.filter.web": "Web",
+                "search.filter.chat": "Chat",
+                "search.recent": "Recent Searches",
+                "chat.title": "Flow-State Chat",
+                "chat.placeholder": "Ask Flow-State Assistant...",
+                "chat.welcome": "Hello! I am your Flow-State assistant. You can check your history data here or chat with me.",
+                // Dynamic
+                "msg.loading": "Loading data...",
+                "msg.no_records": "No records",
+                "msg.failed": "Failed to load",
+                "msg.ai_thinking": "AI is thinking",
+                "msg.ai_analyzing": "Analyzing history...",
+                "msg.no_results": "No records found for \"{query}\".",
+                "msg.ai_answer": "AI Answer",
+                "msg.sources": "Sources",
+                "msg.relevant": "Relevant Records"
+            }
+        };
+
+        function t(key, params = {}) {
+            const lang = localStorage.getItem('flow-language') || 'zh';
+            let text = (i18n[lang] && i18n[lang][key]) || key;
+            for (const [k, v] of Object.entries(params)) {
+                text = text.replace(`{${k}}`, v);
+            }
+            return text;
+        }
+
+        // Replace newlines outside <table> blocks to avoid large gaps
+        function replaceNewlinesOutsideTables(s) {
+            let res = '';
+            let i = 0;
+            while (true) {
+                const start = s.indexOf('<table', i);
+                if (start === -1) {
+                    // Collapse 2+ consecutive newlines to a single <br>
+                    res += s.slice(i).replace(/\n{2,}/g, '<br>');
+                    break;
+                }
+                res += s.slice(i, start).replace(/\n{2,}/g, '<br>');
+                const end = s.indexOf('</table>', start);
+                if (end === -1) { res += s.slice(start); break; }
+                // Keep table part untouched
+                res += s.slice(start, end + 8);
+                i = end + 8;
+            }
+            // Collapse multiple <br> sequences
+            return res.replace(/(?:<br>\s*){2,}/g, '<br>');
+        }
+
+        const themes = {
+            green: {
+                '--color-bg-light': '#fff5cf',
+                '--color-green-light': '#a4bf5a',
+                '--color-green-dark': '#4f6610',
+                '--color-green-mid': '#789035',
+                '--color-text-main': '#4f6610',
+                '--color-text-sub': '#789035',
+                '--color-hover': '#f0f7e6'
+            },
+            blue: {
+                '--color-bg-light': '#e6f7ff',
+                '--color-green-light': '#69c0ff',
+                '--color-green-dark': '#0050b3',
+                '--color-green-mid': '#1890ff',
+                '--color-text-main': '#003a8c',
+                '--color-text-sub': '#1890ff',
+                '--color-hover': '#bae7ff'
+            },
+            orange: {
+                '--color-bg-light': '#fff7e6',
+                '--color-green-light': '#ffc069',
+                '--color-green-dark': '#873800',
+                '--color-green-mid': '#fa8c16',
+                '--color-text-main': '#612500',
+                '--color-text-sub': '#fa8c16',
+                '--color-hover': '#ffd591'
+            },
+            purple: {
+                '--color-bg-light': '#f9f0ff',
+                '--color-green-light': '#b37feb',
+                '--color-green-dark': '#391085',
+                '--color-green-mid': '#722ed1',
+                '--color-text-main': '#22075e',
+                '--color-text-sub': '#722ed1',
+                '--color-hover': '#efdbff'
+            }
+        };
+
+        function changeLanguage(lang) {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (i18n[lang] && i18n[lang][key]) {
+                    el.textContent = i18n[lang][key];
+                }
+            });
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                const key = el.getAttribute('data-i18n-placeholder');
+                if (i18n[lang] && i18n[lang][key]) {
+                    el.placeholder = i18n[lang][key];
+                }
+            });
+            localStorage.setItem('flow-language', lang);
+        }
+
+        function setTheme(themeName, el) {
+            const theme = themes[themeName];
+            if (!theme) return;
+            const root = document.documentElement;
+            for (const [key, value] of Object.entries(theme)) {
+                root.style.setProperty(key, value);
+            }
+            document.querySelectorAll('.color-circle').forEach(c => c.classList.remove('active'));
+            if(el) el.classList.add('active');
+            else {
+                 const map = {green:0, blue:1, orange:2, purple:3};
+                 const circles = document.querySelectorAll('.color-circle');
+                 if(circles[map[themeName]]) circles[map[themeName]].classList.add('active');
+            }
+            localStorage.setItem('flow-theme', themeName);
+        }
+
+        function toggleCompactMode(isCompact) {
+            if (isCompact) document.body.classList.add('compact');
+            else document.body.classList.remove('compact');
+            localStorage.setItem('flow-compact', isCompact);
+        }
+
+        function initSettings() {
+            const lang = localStorage.getItem('flow-language') || 'zh';
+            const select = document.getElementById('language-select');
+            if(select) select.value = lang;
+            changeLanguage(lang);
+
+            const theme = localStorage.getItem('flow-theme') || 'green';
+            setTheme(theme);
+
+            const isCompact = localStorage.getItem('flow-compact') === 'true';
+            const toggle = document.getElementById('compact-toggle');
+            if(toggle) toggle.checked = isCompact;
+            toggleCompactMode(isCompact);
+
+            loadAutostartSetting();
+        }
+
+        async function loadAutostartSetting() {
+            try {
+                const response = await fetch('/api/settings/autostart');
+                const data = await response.json();
+                const toggle = document.getElementById('autostart-toggle');
+                if(toggle) toggle.checked = data.enabled;
+            } catch (e) {
+                console.error("Failed to load autostart setting", e);
+            }
+        }
+
+        function showToast(message, type = 'info') {
+            let container = document.querySelector('.toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.className = 'toast-container';
+                document.body.appendChild(container);
+            }
+
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = message;
+            
+            container.appendChild(toast);
+            
+            // Trigger reflow
+            toast.offsetHeight;
+            
+            requestAnimationFrame(() => {
+                toast.classList.add('show');
+            });
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }, 3000);
+        }
+
+        async function toggleAutostart(enabled) {
+            const toggle = document.getElementById('autostart-toggle');
+            toggle.disabled = true;
+            toggle.parentElement.style.opacity = '0.6';
+            toggle.parentElement.style.cursor = 'not-allowed';
+
+            try {
+                const response = await fetch('/api/settings/autostart', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({enabled: enabled})
+                });
+                const data = await response.json();
+                
+                if(data.error) {
+                    throw new Error(data.error);
+                }
+                
+                showToast(enabled ? '已开启开机自启' : '已关闭开机自启', 'success');
+                
+            } catch (e) {
+                console.error("Failed to set autostart", e);
+                showToast('设置失败: ' + (e.message || '网络错误'), 'error');
+                // Revert UI
+                if(toggle) toggle.checked = !enabled;
+            } finally {
+                if(toggle) {
+                    toggle.disabled = false;
+                    toggle.parentElement.style.opacity = '1';
+                    toggle.parentElement.style.cursor = 'pointer';
+                }
+            }
+        }
+
+        // --- Drag Logic ---
+        const resizer = document.getElementById('resizer');
+        const leftPanel = document.getElementById('left-panel');
+        const app = document.getElementById('app');
+        let isResizing = false;
+
+        resizer.addEventListener('mousedown', function(e) {
+            isResizing = true;
+            document.body.classList.add('resizing');
+        });
+
+        document.addEventListener('mousemove', function(e) {
+            if (!isResizing) return;
+            const containerWidth = app.offsetWidth;
+            const sidebarWidth = 60;
+            let newLeftWidth = ((e.clientX - sidebarWidth) / (containerWidth - sidebarWidth)) * 100;
+            if (newLeftWidth < 20) newLeftWidth = 20;
+            if (newLeftWidth > 80) newLeftWidth = 80;
+            leftPanel.style.width = newLeftWidth + '%';
+        });
+
+        document.addEventListener('mouseup', function(e) {
+            if (isResizing) {
+                isResizing = false;
+                document.body.classList.remove('resizing');
+            }
+        });
+
+        // --- Right Resizer Logic ---
+        const resizerRight = document.getElementById('resizer-right');
+        const rightSidebar = document.getElementById('right-sidebar');
+        let isResizingRight = false;
+
+        function toggleRightSidebar() {
+            if (rightSidebar.style.width === '250px') {
+                rightSidebar.style.width = '0px';
+            } else {
+                rightSidebar.style.width = '250px';
+            }
+        }
+
+        if (resizerRight) {
+            resizerRight.addEventListener('mousedown', function(e) {
+                isResizingRight = true;
+                document.body.classList.add('resizing');
+                e.preventDefault(); 
+            });
+        }
+
+        document.addEventListener('mousemove', function(e) {
+            if (isResizingRight) {
+                // Calculate width based on mouse position from right edge
+                // The right sidebar is at the right edge.
+                // Width = Window Width - Mouse X
+                const newWidth = window.innerWidth - e.clientX;
+                
+                // Constraints
+                if (newWidth > 600) return; // Max width
+                if (newWidth < 50) { // Snap to close
+                     rightSidebar.style.width = '0px';
+                     return;
+                }
+                
+                rightSidebar.style.width = newWidth + 'px';
+            }
+        });
+
+        document.addEventListener('mouseup', function(e) {
+            if (isResizingRight) {
+                isResizingRight = false;
+                document.body.classList.remove('resizing');
+            }
+        });
+
+        // --- Unified Navigation Logic ---
+        let lastHistoryDays = 7;
+        function switchTab(tabId) {
+            // Update Tab UI
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+            
+            // Map tabId to button ID
+            let btnId = '';
+            if (tabId === '7days') btnId = 'btn-7days'; // Legacy
+            else if (tabId === '30days') btnId = 'btn-30days'; // Legacy
+            else if (tabId === 'all') btnId = 'btn-all';
+            else if (tabId === 'custom') btnId = 'btn-custom';
+            else if (tabId === 'search') btnId = 'btn-search';
+            
+            if(btnId) {
+                const btn = document.getElementById(btnId);
+                if(btn) btn.classList.add('active');
+            }
+
+            // Handle View Switching
+            if (tabId === 'search') {
+                showPanel('search');
+            } else if (tabId === 'custom') {
+                showPanel('custom');
+                loadCustomFragments();
+            } else {
+                // 'all' logic (replacing 7days/30days in UI but keeping logic flexible)
+                if (tabId === 'all') lastHistoryDays = 365;
+                else if (tabId === '7days') lastHistoryDays = 7;
+                else if (tabId === '30days') lastHistoryDays = 30;
+                
+                document.getElementById('history-title').textContent = t('history.title.all');
+                showPanel('history');
+                loadHistory(lastHistoryDays);
+            }
+        }
+
+        // --- Sidebar Navigation Logic (Legacy Support) ---
+        function showPanel(panelName) {
+            // Update Sidebar Active State
+            document.querySelectorAll('.sidebar-icon').forEach(el => el.classList.remove('active'));
+            const sidebarIcon = document.getElementById('sidebar-' + panelName);
+            if(sidebarIcon) sidebarIcon.classList.add('active');
+
+            // Toggle Panels
+            document.querySelectorAll('.panel-view').forEach(el => el.classList.remove('active'));
+            const panel = document.getElementById('panel-' + panelName);
+            if(panel) panel.classList.add('active');
+
+            // Sync Top Tabs if switching via sidebar
+            if (panelName === 'search') {
+                document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+                document.getElementById('btn-search').classList.add('active');
+                renderRecentSearches();
+                document.getElementById('ai-search-input').focus();
+            } else if (panelName === 'history') {
+                 // Default to All
+                 document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+                 document.getElementById('btn-all').classList.add('active');
+                 document.getElementById('history-title').textContent = t('history.title.all');
+                 loadHistory(365);
+            }
+        }
+
+        function toggleSettings() {
+            const modal = document.getElementById('settings-modal');
+            modal.classList.toggle('active');
+        }
+
+        document.getElementById('settings-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                toggleSettings();
+            }
+        });
+
+        // --- History Logic (Panel 1) ---
+        let allHistoryData = [];
+        let currentPage = 1;
+        let isLoadingMore = false;
+        let hasMoreData = true;
+
+        // 初始化加载（第一页）
+        async function loadHistory(days) {
+            // 注意：这里 days 参数暂时只用于 UI 标题显示逻辑，
+            // 实际滚动加载使用的是 /api/history/scroll 接口，默认按时间倒序
+            
+            currentPage = 1;
+            hasMoreData = true;
+            allHistoryData = [];
+            
+            const listEl = document.getElementById('history-list');
+            listEl.innerHTML = "<div style='text-align: center; color: #789035; margin-top: 50px;'>" + t('msg.loading') + "</div>";
+            
+            // 解绑之前的滚动事件（防止重复绑定）
+            const container = document.querySelector('.history-container');
+            container.removeEventListener('scroll', handleScroll);
+            
+            await fetchMoreHistory();
+            
+            // 绑定滚动事件
+            container.addEventListener('scroll', handleScroll);
+        }
+
+        // 滚动事件处理
+        function handleScroll() {
+            const container = document.querySelector('.history-container');
+            if (isLoadingMore || !hasMoreData) return;
+            
+            // 检查是否滚动到底部 (预留 50px 缓冲)
+            if (container.scrollTop + container.clientHeight >= container.scrollHeight - 50) {
+                fetchMoreHistory();
+            }
+        }
+
+        // 加载更多数据
+        async function fetchMoreHistory() {
+            if (isLoadingMore || !hasMoreData) return;
+            isLoadingMore = true;
+            
+            // 显示底部 Loading（如果是第一页，上面已经显示了全屏 Loading，这里主要针对后续页）
+            const listEl = document.getElementById('history-list');
+            if (currentPage > 1) {
+                // 检查是否已经有 loading 指示器
+                if (!document.getElementById('scroll-loader')) {
+                    const loader = document.createElement('div');
+                    loader.id = 'scroll-loader';
+                    loader.style.textAlign = 'center';
+                    loader.style.padding = '10px';
+                    loader.style.color = '#789035';
+                    loader.style.fontSize = '12px';
+                    loader.textContent = '正在加载更多...';
+                    listEl.appendChild(loader);
+                }
+            }
+            
+            try {
+                const response = await fetch(`/api/history/scroll?page=${currentPage}&per_page=20`);
+                const json = await response.json();
+                const newData = json.data || [];
+                
+                // 移除 loading 指示器
+                const loader = document.getElementById('scroll-loader');
+                if (loader) loader.remove();
+                
+                if (currentPage === 1) {
+                    listEl.innerHTML = ''; // 清空初始 loading
+                }
+                
+                if (newData.length > 0) {
+                    // Update latest ID if this is the first page
+                    if (currentPage === 1 && newData[0].id) {
+                         lastKnownLatestId = newData[0].id;
+                    }
+
+                    allHistoryData = allHistoryData.concat(newData);
+                    appendHistoryItems(newData, 'history-list');
+                    currentPage++;
+                    hasMoreData = json.has_more;
+                } else {
+                    hasMoreData = false;
+                    if (currentPage === 1) {
+                        listEl.innerHTML = "<div style='text-align: center; color: #789035;'>" + t('msg.no_records') + "</div>";
+                    } else {
+                        // 到底了
+                        const endMsg = document.createElement('div');
+                        endMsg.style.textAlign = 'center';
+                        endMsg.style.padding = '20px';
+                        endMsg.style.color = 'var(--color-text-sub)';
+                        endMsg.style.fontSize = '12px';
+                        endMsg.style.opacity = '0.5';
+                        endMsg.textContent = '到底了 没有更多记录';
+                        listEl.appendChild(endMsg);
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load history:', error);
+                const loader = document.getElementById('scroll-loader');
+                if (loader) loader.remove();
+            } finally {
+                isLoadingMore = false;
+            }
+        }
+
+        function appendHistoryItems(data, targetId) {
+            const listEl = document.getElementById(targetId);
+            
+            const html = data.map((item, index) => {
+                const initial = item.app_name ? item.app_name.charAt(0).toUpperCase() : '?';
+                const displayTitle = item.window_title || item.app_name || '未命名';
+                const displayApp = item.app_name || '未知应用';
+                
+                let time = '--:--';
+                if (item.timestamp) {
+                    const parts = item.timestamp.split(' ');
+                    if (parts.length >= 2) {
+                        // 显示日期+时间，因为是无限滚动，跨天很常见
+                        // 格式: MM-DD HH:MM
+                        const dateParts = parts[0].split('-'); // YYYY-MM-DD
+                        const timePart = parts[1].substring(0, 5);
+                        time = `${dateParts[1]}-${dateParts[2]} ${timePart}`;
+                    } else {
+                        time = item.timestamp;
+                    }
+                }
+                
+                // Add ID for citation reference
+                // Use global index based on allHistoryData length
+                const globalIndex = allHistoryData.indexOf(item) + 1;
+                const itemId = `ref-${globalIndex}`;
+                
+                return `
+                <div class='history-item' id='${itemId}'>
+                    <div class='item-icon'>${initial}</div>
+                    <div class='item-content'>
+                        <div class='item-title' title='${displayTitle}'>${displayTitle}</div>
+                        <div class='item-subtitle'>
+                            <span class='item-time'>${time}</span>
+                            <span style='margin-left: 8px;'>${displayApp}</span>
+                        </div>
+                    </div>
+                </div>
+                `;
+            }).join('');
+            
+            // 使用 insertAdjacentHTML 追加，而不是 innerHTML 覆盖，提高性能
+            listEl.insertAdjacentHTML('beforeend', html);
+        }
+
+        function renderHistoryList(data, targetId) {
+            const listEl = document.getElementById(targetId);
+            listEl.innerHTML = ''; // Clear existing
+            appendHistoryItems(data, targetId);
+        }
+
+        // --- AI Search Logic (Panel 2) ---
+        let recentSearches = ['我的工作效率', 'Chrome 历史', 'Python 学习'];
+
+        function handleAiSearch(e) {
+            if (e.key === 'Enter') {
+                const query = document.getElementById('ai-search-input').value;
+                if(query.trim()) {
+                    performAiSearch(query);
+                }
+            }
+        }
+
+        function renderRecentSearches() {
+            const resultsArea = document.getElementById('ai-results-area');
+            if (document.getElementById('ai-search-input').value.trim() !== '') return;
+
+            const list = recentSearches.map(s => `
+                <div class='recent-item' onclick='setSearch("${s}")'>
+                    <div class='recent-icon'>
+                        <svg viewBox='0 0 24 24' width='16' height='16' fill='currentColor'><path d='M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z'/></svg>
+                    </div>
+                    <span>${s}</span>
+                </div>
+            `).join('');
+
+            resultsArea.innerHTML = `
+                <div class='result-group-title' style='margin-top: 20px;'>${t('search.recent')}</div>
+                <div class='recent-searches'>${list}</div>
+            `;
+        }
+
+        function setSearch(val) {
+            const input = document.getElementById('ai-search-input');
+            input.value = val;
+            performAiSearch(val);
+        }
+
+        function performAiSearch(query) {
+            // Save to recent
+            if (!recentSearches.includes(query)) {
+                recentSearches.unshift(query);
+                if (recentSearches.length > 5) recentSearches.pop();
+            }
+
+            const resultsArea = document.getElementById('ai-results-area');
+            
+            // Show Loading State
+            resultsArea.innerHTML = `
+                <div style='text-align: center; margin-top: 40px;'>
+                    <div style='color: #4f6610; font-weight: bold; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 10px;'>
+                        <div class="typing-cursor"></div> ${t('msg.ai_thinking')}
+                    </div>
+                    <div style='color: #789035; font-size: 14px;'>${t('msg.ai_analyzing')}</div>
+                </div>
+            `;
+
+            // Simulate AI Delay
+            setTimeout(() => {
+                const results = allHistoryData.filter(item => {
+                    const title = (item.window_title || '').toLowerCase();
+                    const app = (item.app_name || '').toLowerCase();
+                    return title.includes(query.toLowerCase()) || app.includes(query.toLowerCase());
+                });
+                renderAiResults(query, results);
+            }, 1500);
+        }
+
+        function renderAiResults(query, results) {
+            const resultsArea = document.getElementById('ai-results-area');
+            
+            if (results.length === 0) {
+                resultsArea.innerHTML = `
+                    <div style='text-align: center; margin-top: 40px; color: #789035;'>
+                        ${t('msg.no_results', {query})}
+                    </div>
+                `;
+                return;
+            }
+
+            // Prepare layout
+            resultsArea.innerHTML = `
+                <div class='ai-summary-card' style='display: block;'>
+                    <div class='ai-summary-title'>
+                        <svg viewBox='0 0 24 24' width='18' height='18' fill='#4f6610'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z'/></svg>
+                        ${t('msg.ai_answer')}
+                    </div>
+                    <div class='ai-summary-content' id='ai-stream-content'></div>
+                    <div class='follow-up-chips' id='follow-ups' style='display:none;'>
+                        <div class='follow-up-chip' onclick='setSearch("我的工作效率")'>
+                            <svg viewBox='0 0 24 24' width='14' height='14' fill='currentColor'><path d='M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7zm2.85 11.1l-.85.6V16h-4v-2.3l-.85-.6A4.997 4.997 0 0 1 7 9c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.63-.8 3.16-2.15 4.1z'/></svg>
+                            我的工作效率
+                        </div>
+                        <div class='follow-up-chip' onclick='setSearch("最近的活动")'>
+                            <svg viewBox='0 0 24 24' width='14' height='14' fill='currentColor'><path d='M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z'/></svg>
+                            最近的活动
+                        </div>
+                        <div class='follow-up-chip' onclick='setSearch("显示来源")'>
+                            <svg viewBox='0 0 24 24' width='14' height='14' fill='currentColor'><path d='M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z'/></svg>
+                            显示来源
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            const listHTML = results.map((item, idx) => {
+                const initial = item.app_name ? item.app_name.charAt(0).toUpperCase() : '?';
+                const time = item.timestamp ? item.timestamp.split(' ')[1].substring(0, 5) : '--:--';
+                return `
+                <div class='history-item' id='res-${idx}'>
+                    <div class='item-icon'>${initial}</div>
+                    <div class='item-content'>
+                        <div class='item-title'>${item.window_title || item.app_name}</div>
+                        <div class='item-subtitle'>
+                            <span class='item-time'>${time}</span>
+                            <span style='margin-left: 8px;'>${item.app_name}</span>
+                        </div>
+                    </div>
+                    <div style='font-size: 12px; color: #ccc;'>#${idx+1}</div>
+                </div>
+                `;
+            }).join('');
+
+            resultsArea.innerHTML += `<div class='result-group-title'>${t('msg.sources')}</div><div class='history-list'>${listHTML}</div>`;
+
+            // Start Streaming
+            const appName = results[0]?.app_name || '应用';
+            const count = results.length;
+            const text = `根据您的历史记录，我找到了 ${count} 条相关内容[1]。这些活动主要发生在 ${appName} 中[2]。\n\n看来您在 "${query}" 方面花费了不少时间。建议您回顾一下这些文档，或者查看相关的沟通记录以获取更多上下文。`;
+            
+            streamText(text, 'ai-stream-content', () => {
+                document.getElementById('follow-ups').style.display = 'flex';
+            });
+        }
+
+        function streamText(text, elementId, callback) {
+            const el = document.getElementById(elementId);
+            el.innerHTML = ''; // Clear
+            el.classList.add('typing-cursor');
+            
+            let i = 0;
+            // Parse for [n] and replace with styled HTML as we go? 
+            // Simpler: Stream raw text, then format? 
+            // Better: Split by tokens.
+            
+            // Simple char streaming for demo
+            const interval = setInterval(() => {
+                el.textContent += text.charAt(i);
+                i++;
+                if (i >= text.length) {
+                    clearInterval(interval);
+                    el.classList.remove('typing-cursor');
+                    // Post-process for citations
+                    el.innerHTML = el.innerHTML.replace(/\[(\d+)\]/g, `<span class='citation-ref'>$1</span>`);
+                    if(callback) callback();
+                }
+            }, 30);
+        }
+
+        // Init
+        // loadHistory(7); // Default
+        switchTab('7days'); // Use new init
+
+        // Auto Refresh Logic
+        let autoRefreshInterval = null;
+        let lastKnownLatestId = null;
+        
+        function startAutoRefresh() {
+            if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+            
+            // Initial load
+            loadTodayStats();
+            // Initial check to set ID
+            checkAndRefresh();
+
+            // Poll every 50 seconds
+            autoRefreshInterval = setInterval(() => {
+                // Always refresh stats
+                loadTodayStats();
+                // Check for updates
+                checkAndRefresh();
+            }, 50000);
+        }
+
+        async function checkAndRefresh() {
+            try {
+                // Check server for latest record
+                // Add timestamp to prevent caching
+                const response = await fetch('/api/history/check_update?t=' + new Date().getTime());
+                const data = await response.json();
+                
+                if (data.error) return;
+                
+                const serverLatestId = data.latest_id;
+                
+                // If we don't have a known ID yet, set it (first run)
+                // Or if server has newer ID, refresh
+                if (lastKnownLatestId === null || (serverLatestId && serverLatestId > lastKnownLatestId)) {
+                    console.log("New data detected: Server=" + serverLatestId + ", Local=" + lastKnownLatestId);
+                    
+                    // Update known ID
+                    lastKnownLatestId = serverLatestId;
+                    
+                    // Check if history panel is active
+                    const historyPanel = document.getElementById('panel-history');
+                    if (historyPanel && historyPanel.classList.contains('active')) {
+                        console.log("Refreshing history list...");
+                        // Reload list to show new item
+                        loadHistory(lastHistoryDays);
+                    }
+                }
+            } catch (e) {
+                console.error("Auto refresh check failed", e);
+            }
+        }
+
+        async function loadTodayStats() {
+            try {
+                const response = await fetch('/api/stats/today');
+                const data = await response.json();
+                
+                if (data.error) return;
+                
+                // Format seconds to Hh Mm
+                const formatTime = (seconds) => {
+                    const h = Math.floor(seconds / 3600);
+                    const m = Math.floor((seconds % 3600) / 60);
+                    if (h > 0) return `${h}小时 ${m}分`;
+                    return `${m}分钟`;
+                };
+                
+                document.getElementById('today-focus-time').textContent = formatTime(data.total_productive_seconds);
+                document.getElementById('today-ent-time').textContent = formatTime(data.total_entertainment);
+                
+            } catch (e) {
+                console.error("Stats load failed", e);
+            }
+        }
+
+        async function silentLoadHistory(days) {
+            try {
+                const response = await fetch('/api/history/recent?days=' + days);
+                const json = await response.json();
+                const data = Array.isArray(json) ? json : (json.data || []);
+                
+                // Only update DOM if data length changed or first item is different (simple diff)
+                // For a smoother experience, we might want a better diffing algo, 
+                // but for now, just re-rendering is fine as it's fast.
+                if (JSON.stringify(data) !== JSON.stringify(allHistoryData)) {
+                    allHistoryData = data;
+                    renderHistoryList(data, 'history-list');
+                }
+            } catch (error) {
+                console.error('Silent refresh failed:', error);
+            }
+        }
+
+        startAutoRefresh();
+
+
+        // --- Report Generation Logic ---
+        let selectedReportDays = 3;
+
+        function selectPeriod(days) {
+            selectedReportDays = days;
+            document.getElementById('selected-period-text').innerText = days;
+            
+            // Update button styles
+            const buttons = document.querySelectorAll('.period-btn');
+            buttons.forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.innerText.includes(days + '天')) {
+                    btn.classList.add('active');
+                }
+            });
+        }
+
+        async function generateReport() {
+            // Switch UI
+            document.getElementById('report-config-ui').style.display = 'none';
+            document.getElementById('report-result-view').style.display = 'block';
+            
+            const markdownContainer = document.getElementById('report-markdown-content');
+            markdownContainer.innerHTML = `
+                <div style="text-align: center; margin-top: 100px; color: #666;">
+                    <svg style="animation: spin 1s linear infinite; margin-bottom: 20px;" viewBox="0 0 24 24" width="40" height="40" fill="#66BB6A"><path d="M12 4V2A10 10 0 0 0 2 12h2a8 8 0 0 1 8-8z"/></svg><br>
+                    正在生成 ${selectedReportDays} 天的深度复盘...<br>
+                    <span style="font-size: 12px; opacity: 0.7;">AI 正在分析您的专注数据</span>
+                </div>
+                <style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>
+            `;
+
+            try {
+                // Call API (Need to implement backend endpoint later)
+                // For now, simulating a delay and Markdown response
+                // await new Promise(r => setTimeout(r, 2000));
+                
+                const response = await fetch('/api/report/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ days: selectedReportDays })
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    markdownContainer.innerHTML = `<div style="color: red; text-align: center; margin-top: 50px;">生成失败: ${data.error}</div>`;
+                } else {
+                    // Render Markdown (Simple replacement for now, marked.js recommended for production)
+                    let html = data.report
+                        .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+                        .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+                        .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+                        .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>');
+                    function replaceNewlinesOutsideTables(s) {
+                        let res = '';
+                        let i = 0;
+                        while (true) {
+                            const start = s.indexOf('<table', i);
+                            if (start === -1) {
+                                res += s.slice(i).replace(/\n{2,}/g, '<br>');
+                                break;
+                            }
+                            res += s.slice(i, start).replace(/\n{2,}/g, '<br>');
+                            const end = s.indexOf('</table>', start);
+                            if (end === -1) { res += s.slice(start); break; }
+                            res += s.slice(start, end + 8);
+                            i = end + 8;
+                        }
+                        return res.replace(/(?:<br>\s*){2,}/g, '<br>');
+                    }
+                    html = replaceNewlinesOutsideTables(html);
+                    
+                    markdownContainer.innerHTML = html;
+                }
+
+            } catch (e) {
+                console.error(e);
+                markdownContainer.innerHTML = `<div style="color: red; text-align: center; margin-top: 50px;">网络请求错误，请检查后台服务。</div>`;
+            }
+        }
+
+        function showReportConfig() {
+            document.getElementById('report-config-ui').style.display = 'flex';
+            document.getElementById('report-result-view').style.display = 'none';
+        }
+
+        // --- Chat Logic ---
+        const chatMessages = document.getElementById('chat-messages');
+        const chatInput = document.getElementById('chat-input');
+        const sendBtn = document.getElementById('send-btn');
+
+        function addMessage(role, text) {
+            const div = document.createElement('div');
+            div.className = 'message ' + role;
+            div.textContent = text;
+            chatMessages.appendChild(div);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // --- New Report Trigger Logic ---
+        async function triggerReportGeneration() {
+            const daysInput = document.getElementById('days-input');
+            const days = parseInt(daysInput.value) || 3;
+            
+            // 构造模拟的用户消息，用于显示
+            const userText = `生成近 ${days} 天的报告`;
+            addMessage('user', userText);
+            
+            // Show thinking state
+            const thinkingId = 'thinking-' + Date.now();
+            const div = document.createElement('div');
+            div.className = 'message ai typing-cursor';
+            div.id = thinkingId;
+            div.innerHTML = `正在为您生成近 ${days} 天的深度复盘报告...<br><span style="font-size:12px; opacity:0.7">这可能需要几秒钟</span>`;
+            chatMessages.appendChild(div);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            try {
+                const response = await fetch('/api/report/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ days: days })
+                });
+                
+                const data = await response.json();
+                
+                // Remove thinking indicator
+                const thinkingEl = document.getElementById(thinkingId);
+                if (thinkingEl) thinkingEl.remove();
+
+                if (data.error) {
+                    addMessage('ai', '生成失败: ' + data.error);
+                } else {
+                    // Render Markdown Report in Chat
+                    let html = data.report
+                        .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+                        .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+                        .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+                        .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>');
+                    html = replaceNewlinesOutsideTables(html);
+                    
+                    const aiDiv = document.createElement('div');
+                    aiDiv.className = 'message ai';
+                    aiDiv.innerHTML = html;
+                    chatMessages.appendChild(aiDiv);
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                }
+            } catch (e) {
+                const thinkingEl = document.getElementById(thinkingId);
+                if (thinkingEl) thinkingEl.remove();
+                addMessage('ai', '网络请求错误: ' + e.message);
+            }
+        }
+        document.getElementById('days-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') triggerReportGeneration();
+        });
+
+        async function loadCustomFragments() {
+            const listEl = document.getElementById('custom-list');
+            listEl.innerHTML = "<div style='text-align: center; color: #789035; margin-top: 50px;'>" + t('msg.loading') + "</div>";
+            
+            try {
+                const response = await fetch('/api/sessions/manual/list?limit=100');
+                const data = await response.json();
+                
+                if (data.error) {
+                     listEl.innerHTML = `<div style="color:red; text-align:center;">Error: ${data.error}</div>`;
+                     return;
+                }
+                
+                if (data.length === 0) {
+                    listEl.innerHTML = "<div style='text-align: center; color: #789035; margin-top: 20px;'>暂无自定义片段</div>";
+                    return;
+                }
+                
+                const html = data.map(item => {
+                    const timeRange = `${item.start_time} - ${item.end_time.split(' ')[1]}`;
+                    return `
+                    <div class='history-item'>
+                        <div class='item-icon' style='font-size:12px;'>MANUAL</div>
+                        <div class='item-content'>
+                            <div class='item-title'>${item.window_title || item.summary}</div>
+                            <div class='item-subtitle'>
+                                <span class='item-time'>${timeRange}</span>
+                                <span style='margin-left: 8px;'>${item.status}</span>
+                            </div>
+                        </div>
+                        <div style='cursor:pointer; color:brown; padding:5px; font-size:18px; font-weight:bold;' onclick='deleteFragment(${item.id})'>
+                           &times;
+                        </div>
+                    </div>
+                    `;
+                }).join('');
+                listEl.innerHTML = html;
+                
+            } catch (e) {
+                console.error(e);
+                listEl.innerHTML = "Load failed";
+            }
+        }
+
+        function initFragmentModal() {
+            // Populate hours
+            const hours = [];
+            for(let i=0; i<24; i++) hours.push(String(i).padStart(2, '0'));
+            
+            // Populate minutes
+            const minutes = [];
+            for(let i=0; i<60; i++) minutes.push(String(i).padStart(2, '0'));
+            
+            ['start', 'end'].forEach(prefix => {
+                const hSel = document.getElementById(prefix + '-hour');
+                const mSel = document.getElementById(prefix + '-minute');
+                if(hSel && mSel) {
+                    hSel.innerHTML = hours.map(h => `<option value="${h}">${h}</option>`).join('');
+                    mSel.innerHTML = minutes.map(m => `<option value="${m}">${m}</option>`).join('');
+                }
+            });
+        }
+
+        function openAddFragmentModal() {
+            document.getElementById('fragment-modal').classList.add('active');
+            
+            // Populate selects if empty
+            if(document.getElementById('start-hour').options.length === 0) {
+                initFragmentModal();
+            }
+
+            const now = new Date();
+            const oneHourAgo = new Date(now - 3600000);
+            
+            // Helper to format Date input YYYY-MM-DD
+            const toDateStr = (d) => {
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            };
+            
+            // Set Start
+            document.getElementById('start-date').value = toDateStr(oneHourAgo);
+            document.getElementById('start-hour').value = String(oneHourAgo.getHours()).padStart(2, '0');
+            document.getElementById('start-minute').value = String(oneHourAgo.getMinutes()).padStart(2, '0');
+            
+            // Set End
+            document.getElementById('end-date').value = toDateStr(now);
+            document.getElementById('end-hour').value = String(now.getHours()).padStart(2, '0');
+            document.getElementById('end-minute').value = String(now.getMinutes()).padStart(2, '0');
+        }
+
+        function closeFragmentModal() {
+            document.getElementById('fragment-modal').classList.remove('active');
+        }
+
+        async function saveFragment() {
+            const sDate = document.getElementById('start-date').value;
+            const sHour = document.getElementById('start-hour').value;
+            const sMin = document.getElementById('start-minute').value;
+            
+            const eDate = document.getElementById('end-date').value;
+            const eHour = document.getElementById('end-hour').value;
+            const eMin = document.getElementById('end-minute').value;
+            
+            const summary = document.getElementById('frag-summary').value;
+            const status = document.getElementById('frag-status').value;
+            
+            if(!sDate || !eDate || !summary) {
+                alert("请填写完整信息");
+                return;
+            }
+            
+            const start = `${sDate} ${sHour}:${sMin}:00`;
+            const end = `${eDate} ${eHour}:${eMin}:00`;
+            
+            try {
+                const res = await fetch('/api/sessions/manual/add', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        start_time: start,
+                        end_time: end,
+                        summary: summary,
+                        status: status
+                    })
+                });
+                const json = await res.json();
+                if(json.error) {
+                    alert("添加失败: " + json.error);
+                } else {
+                    closeFragmentModal();
+                    loadCustomFragments();
+                    loadTodayStats(); // Refresh stats
+                }
+            } catch(e) {
+                alert("Network Error");
+            }
+        }
+
+        async function deleteFragment(id) {
+            if(!confirm("确定删除此片段吗?")) return;
+            try {
+                const res = await fetch('/api/sessions/manual/delete', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({id: id})
+                });
+                const json = await res.json();
+                if(json.error) {
+                    alert("删除失败: " + json.error);
+                } else {
+                    loadCustomFragments();
+                    loadTodayStats();
+                }
+            } catch(e) {
+                alert("Network Error");
+            }
+        }
+
+        // Run Init
+        initSettings();
+        switchTab('all');
+
+    </script>
+</body>
+</html>
